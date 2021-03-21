@@ -2,7 +2,14 @@
 import * as mongoose from 'mongoose';
 import 'reflect-metadata';
 import * as semver from 'semver';
+import { parseENV, setGlobalOptions } from './globalOptions';
+import { DecoratorKeys } from './internal/constants';
+import { constructors, models } from './internal/data';
+import { _buildSchema } from './internal/schema';
 import { assertion, assertionIsClass, getName, isNullOrUndefined, mergeMetadata, mergeSchemaOptions } from './internal/utils';
+import { logger } from './logSettings';
+import { isModel } from './typeguards';
+import type { AnyParamConstructor, BeAnObject, DocumentType, IModelOptions, Ref, ReturnModelType } from './types';
 
 /* istanbul ignore next */
 if (!isNullOrUndefined(process?.version) && !isNullOrUndefined(mongoose?.version)) {
@@ -23,31 +30,23 @@ if (!isNullOrUndefined(process?.version) && !isNullOrUndefined(mongoose?.version
   }
 }
 
-import { parseENV, setGlobalOptions } from './globalOptions';
-import { DecoratorKeys } from './internal/constants';
-import { constructors, models } from './internal/data';
-import { _buildSchema } from './internal/schema';
-import { logger } from './logSettings';
-import { isModel } from './typeguards';
-import type { AnyParamConstructor, BeAnObject, DocumentType, IModelOptions, Ref, ReturnModelType } from './types';
-
 /* exports */
 // export the internally used "mongoose", to not need to always import it
-export { mongoose, setGlobalOptions };
-export { setLogLevel, LogLevels } from './logSettings';
-export * from './prop';
+export * as defaultClasses from './defaultClasses';
 export * from './hooks';
-export * from './plugin';
 export * from './index';
+export { Severity } from './internal/constants';
+export * as errors from './internal/errors';
+export { getClass, getClassForDocument, getName } from './internal/utils';
+export { LogLevels, setLogLevel } from './logSettings';
 export * from './modelOptions';
+export * from './plugin';
+export * from './prop';
 export * from './queryMethod';
 export * from './typeguards';
-export * as defaultClasses from './defaultClasses';
-export * as errors from './internal/errors';
 export * as types from './types';
+export { mongoose, setGlobalOptions };
 export { DocumentType, Ref, ReturnModelType };
-export { getClassForDocument, getClass, getName } from './internal/utils';
-export { Severity } from './internal/constants';
 
 parseENV(); // call this before anything to ensure they are applied
 
@@ -165,9 +164,9 @@ export function buildSchema<U extends AnyParamConstructor<any>>(
 export function addModelToTypegoose<U extends AnyParamConstructor<any>, QueryHelpers = BeAnObject>(
   model: mongoose.Model<any>,
   cl: U,
-  options?: { existingMongoose?: mongoose.Mongoose; existingConnection?: any }
+  options?: { existingMongoose?: mongoose.Mongoose; existingConnection?: mongoose.Connection }
 ) {
-  const mongooseModel = options?.existingMongoose?.Model || options?.existingConnection?.base?.Model || mongoose.Model;
+  const mongooseModel = options?.existingMongoose?.Model || options?.existingConnection?.model || mongoose.Model;
 
   assertion(model.prototype instanceof mongooseModel, new TypeError(`"${model}" is not a valid Model!`));
   assertionIsClass(cl);
